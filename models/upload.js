@@ -1,67 +1,95 @@
 var mongoose = require('mongoose');
 Schema = mongoose.Schema;
-
-var User = mongoose.model('User');
-var tools = require('../modules/tools.js');
+var Merchant = mongoose.model('Merchant');
 
 var uploadSchema = new Schema ({
-  userId: String,
   raw: String,
-  action: String, 
-  start: Date,
-  finished: Date,
-  status: String
+  list: [], 
+  status: String,
+  date: Date
 });
 
 uploadSchema.methods.parse = function parse(){
 
-	console.log('raw data: ' + this.raw);
-	      	var upload = {
-	      		"raw":this.raw,
-	      		"_id":this.id,
-	      		"action":this.action
-	      	};
-	      	console.log(upload);
-	// find the user to get their sas token and key
-	User.findOne({'_id':this.userId}, function( err, user ){
-		if (err) {
-	      return res.status(400).send('user lookup failed for user ' + this.userId + ' with err ' + err); 
-	      console.log(err);
-	    
-	    }else{
-	      if(user){
-	      	console.log('user found with token ' + user.sasToken);
+	console.log('parsing upload with date ' + this.date);
 
-	      	i(user, upload);
-	  	  }else{
-	  	  	console.log('failed to find user with id ' + this.userId);
-	  	  }
-	    }
-	});
-
-	function i(user, upload){
-
-	// s this method creates child items from an upload
-		var token = user.token;
-		var key = user.pk;
-
-		if(upload.raw){
-			var rows = upload.raw.split("\r\n");	
-			console.log("userId: " + user._id);
-			for ( var i = 0; i < rows.length; i++){
-				var newItem = {
-					"uploadId":upload._id,
-					"raw":rows[i],
-					"action":upload.action,
-					"userId":user._id
-				};
-				tools.createItem(newItem);
-
-			}
-		}else{
-			console.log('no data for item ' + upload._id);
-		}
+	// find or create merchant accounts for each item in the upload list
+	for(var i = 0; i < this.list.length; i++ ){
+		var thismid = this.list[i];
+		console.log('searching for merchant ' + this.list[i] );
+		checkAndUpdate(thismid);		
+	
 	}
+
+	function checkAndUpdate(mid){
+		Merchant.findOne({'mid':mid}, function( err, merchant ){
+			if(!merchant){
+				// create merchant and set last mod to date(now)
+				console.log('merchant created with mid ' + mid);
+
+				var newMerchant = {
+					"mid":mid,
+					"dailyAlertCounter":1,
+					"lastModified": new Date()
+				};
+
+				// create a new merchant with the data  
+				Merchant.create(newMerchant, function(err, upload) {
+					if (err) {
+					  console.log("error creating merchant with mid: " + err); 
+					}else{
+					  console.log("New merchant created with mid " + mid);
+					}
+				});
+			}else{
+				// increment merchant counter
+				console.log("merchant with id " + mid + " daily alert count update triggered");
+				
+				// if the lastModified date is older than 1 week, set the counter to 0
+				var newCounter;
+				var today = new Date();
+				var limitDate = new Date;
+					limitDate.setDate(today.getDate() - 7);
+				if(merchant.lastModified > limitDate ){
+					newCounter = merchant.dailyAlertCounter + 1;
+				} else {
+					newCounter = 1;
+				}
+
+				// status is set based on the new value of the dailyAlertCounter
+				var newStatus = "";
+				if ( 2 == merchant.dailyAlertCounter ) {
+					newStatus = "alert";
+				} else if ( 1 == merchant.dailyAlertCounter ) {
+					newStatus = "in review";
+				} else if ( 0 == merchant.dailyAlertCounter ) {
+					newStatus = "pending review";
+				} else {
+					newStatus = "new";
+				}
+
+				var updatedMerchant = {
+					  "dailyAlertCounter": newCounter,
+					  "status": newStatus, 
+					  "lastModified": new Date()
+				};
+
+				var query = {
+					"mid":mid
+				};
+
+				Merchant.findOneAndUpdate(query, updatedMerchant, {upsert:true}, function(err, merchant){
+					if ( err ) {
+						console.log('error updating Merchant')
+					} else {
+						console.log('merchant ' + merchant.mid + " counter updated to " + merchant.dailyAlertCounter)
+					}
+
+				});
+			}
+		});
+	}
+
 };
 
 mongoose.model('Upload', uploadSchema);

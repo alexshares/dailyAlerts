@@ -2,47 +2,98 @@ var mongoose = require('mongoose');
 var passwordHash = require('password-hash');
 
 var Upload = mongoose.model('Upload');
-var User = mongoose.model('User');
 
-exports.create = function(req, res){
-	
-    User.findOne({'_id':req.body.userId},function(err, result) {
-    if (err){ 
-		return res.status(404).send(err) ;
-		//console.log(err);
-    	console.log('user selected with _id:' + req.body.userId + ' and token ' + req.body.token);
-    }
-    if (!result) {
-    	//  console.log(result);
-    	return res.status(401).send("User doesn't exist " + req.body.userId);
-    }else{
-		// User exists, so check token:
-		result.checkToken(req.body.token, c);
-    }
-
-    function c(stat, user){
-	console.log('creating new upload for user ' + user._id);
-	if(stat === true){
-	  var newUpload = {
-		"action":req.body.action,
-		"raw":req.body.raw,
-		"userId":user._id		
-	    };
-	  Upload.create(newUpload, function(err, upload) {
-	    if (err) {
-	      return res.status(400).send('upload failed ' + err); 
-	    
-	    }else{
-	      upload.parse();
-	      return res.status(201).send("New upload created for user with id " + upload._id);
-
-	    }
-	  });
-	}else{
-          return res.status(401).send("User session invalid for user " + req.body.userId);
-
-	}
-    }
-
-  });
+exports.getUploadById = function(req, res){
+	Upload.findOne({'_id':req.params.id}, function(err, result) {
+		if(!result){
+			return res.status(200).send("record not found");    
+		}else{  
+			return res.status(200).send(result);
+		}
+	});
 }
+
+exports.getUploadByDate = function(req, res){
+	console.log('date submitted ' + req.params.date );
+	Upload.findOne({'date':req.params.date}, function(err, result) {
+		if(!result){
+			return res.status(200).send("no records found");    
+		}else{  
+			return res.status(200).send(result);
+		}
+	});
+};
+
+exports.getUploadByDateRange = function(req, res){
+	var start = req.body.start;
+	var end = req.body.end;
+
+	console.log('date start ' + start );
+	console.log('date end ' + end );
+
+	var query = {
+			"$gte": new Date(start), 
+			"$lt": new Date(end)
+		};
+	console.log(query);
+
+	Upload.find({'date': query}, function(err, result) {
+		if(!result){
+			return res.status(200).send("no records found");    
+		}else{  
+			return res.status(200).send(result);
+		}
+	});
+};
+
+exports.uploadDailyData = function(req, res){
+
+	console.log('creating new upload');
+
+	// get the data from the request body or return 500 if null data
+	if( !req.body.raw ) {
+		console.log('no data uploaded');
+		return res.status(500).send('invalid upload data'); 
+	} else {
+		var raw = req.body.raw;
+	}
+
+	// check if upload has date defined, or default to today
+	if( !req.body.date ) {
+		var date = new Date;
+		console.log('no date stamp uploaded, setting to today: ' + date);
+
+	} else {
+		var date = new Date(req.body.date);
+		console.log('setting date to user specified ' + date);
+	}	
+
+	// loop through the upload data and create an array of IDs
+	var set = raw.split(',');
+	console.log(set);
+
+	// create a container to make a new upload
+	var newDailyUpload = {
+		"raw": raw,	
+		"list": set,
+		"date": date
+	};
+
+	// create a new upload with the data  
+	Upload.create(newDailyUpload, function(err, upload) {
+		if (err) {
+		  return res.status(500).send('upload failed ' + err); 
+
+		}else{
+		  upload.parse();
+		  return res.status(200).send("New upload created with id " + upload._id);
+
+		}
+	});
+
+};
+
+exports.hello = function hello(req, res) {
+	console.log('hello');
+	return res.status(200).send('hello'); 
+};

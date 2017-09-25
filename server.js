@@ -42,8 +42,11 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 // Include models
+require('./models/merchant.js');
+require('./models/upload.js');
+ 
+//require('./models/dailyData.js')
 
-require('./models/dailyData.js');
 
 // Require routes
 require('./routes.js')(app);
