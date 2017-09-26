@@ -92,6 +92,4 @@ uploadSchema.methods.parse = function parse(){
 
 };
 
-mongoose.model('Upload', uploadSchema);
-
-module.exports = mongoose.model('Upload');
+module.exports = mongoose.model('Upload', uploadSchema);

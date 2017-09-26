@@ -8,6 +8,5 @@ var MerchantSchema = new Schema ({
   lastModified: Date
 });
 
-mongoose.model('Merchant', MerchantSchema);
 
-module.exports = mongoose.model('Merchant');
+module.exports = mongoose.model('Merchant', MerchantSchema);

@@ -8,6 +8,4 @@ var ReportSchema = new Schema ({
   dateCreated: Date
 });
 
-mongoose.model('Report', ReportSchema);
-
-module.exports = mongoose.model('Report');
+module.exports = mongoose.model('Report', ReportSchema);

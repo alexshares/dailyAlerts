@@ -43,7 +43,10 @@ app.use(cookieParser());
 
 // Include models
 require('./models/merchant.js');
+require('./models/PixelTemplate.js');
+require('./models/pixel.js');
 require('./models/upload.js');
+
  
 //require('./models/dailyData.js')
 
